@@ -206,7 +206,17 @@
           <div class="form-group">
             <label for="balance-interval">自动展示间隔 t（分钟）</label>
             <input type="number" id="balance-interval" min="0" max="1440" step="1" value="30">
-            <span class="form-hint">每隔 t 分钟自动展示一次余额；填 0 表示只在双击桌宠时展示</span>
+            <span class="form-hint">每隔 t 分钟自动展示一次余额；填 0 关闭定时展示，仍可双击或靠近查看</span>
+          </div>
+          <div class="form-group">
+            <label class="switch-label">
+              <span>鼠标靠近时显示余额</span>
+              <label class="switch">
+                <input type="checkbox" id="balance-hover-enabled">
+                <span class="switch-slider"></span>
+              </label>
+            </label>
+            <span class="form-hint">无需点击，靠近桌宠停留片刻显示，移开收起；余额缓存 30 秒，拖动时气泡跟随桌宠</span>
           </div>
           <div class="form-group">
             <label for="balance-phrases">双击自定义语句（每行一句）</label>

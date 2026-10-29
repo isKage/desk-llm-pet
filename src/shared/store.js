@@ -18,6 +18,7 @@ const defaults = {
   },
   balance: {
     enabled: true,
+    hoverEnabled: false,
     intervalMinutes: 30,
     // 关闭余额气泡后，双击桌宠随机展示的自定义语句（每行一句）
     customPhrases: []

@@ -16,6 +16,8 @@ const { createMenuWindow, hideMenuWindow } = require('./menu-window');
 const { createTray } = require('./tray');
 const { registerIpcHandlers } = require('./ipc-handlers');
 const { getLLMConfig } = require('../shared/store');
+const { startBalanceHover } = require('./balance-hover');
+
 
 // 插件宿主按需加载：即使 src/plugins 缺失或损坏，本体也能照常启动
 let pluginManager = null;
@@ -83,6 +85,8 @@ async function initApp() {
 
   // 右键菜单窗口（隐藏，用到时才显示；独立窗口才能按菜单内容自适应大小）
   createMenuWindow();
+  const stopBalanceHover = startBalanceHover();
+  app.once('before-quit', stopBalanceHover);
 
   // 桌宠移动 / 缩放 / 显隐时，气泡跟着走，菜单先收起来
   setPetGeometryListener(() => {

@@ -98,6 +98,7 @@ function cacheElements() {
 
   // 余额气泡
   elements.balanceEnabled = document.getElementById('balance-enabled');
+  elements.balanceHoverEnabled = document.getElementById('balance-hover-enabled');
   elements.balanceInterval = document.getElementById('balance-interval');
   elements.balancePhrases = document.getElementById('balance-phrases');
   elements.balancePhrasesHint = document.getElementById('balance-phrases-hint');
@@ -266,6 +267,7 @@ function populateForms() {
 
   // 余额气泡
   elements.balanceEnabled.checked = balance.enabled !== false;
+  elements.balanceHoverEnabled.checked = balance.hoverEnabled === true;
   elements.balanceInterval.value = Number.isFinite(Number(balance.intervalMinutes))
     ? Number(balance.intervalMinutes) : 30;
   // 双击自定义语句（每行一句）
@@ -561,6 +563,7 @@ async function savePetConfig() {
   const intervalMinutes = Number.isFinite(rawInterval) ? Math.min(1440, Math.max(0, Math.round(rawInterval))) : 30;
   const balanceConfig = {
     enabled: elements.balanceEnabled.checked,
+    hoverEnabled: elements.balanceHoverEnabled.checked,
     intervalMinutes,
     customPhrases: readCustomPhrases()
   };

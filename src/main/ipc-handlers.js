@@ -16,6 +16,7 @@ const {
   getAllConfig
 } = require('../shared/store');
 const { fetchBalance, formatBalanceText } = require('../shared/deepseek-api');
+const { invalidateBalanceCache } = require('./balance-hover');
 const { createSettingsWindow } = require('./settings-window');
 const {
   togglePetWindow, setPetSize, setPetOpacity,
@@ -51,6 +52,7 @@ function registerIpcHandlers() {
         if (typeof config[key] === 'string') next[key] = config[key].trim();
       }
       setLLMConfig(next);
+      invalidateBalanceCache();
       // 通知桌宠：API 配置变化后刷新一次余额
       sendToPet('balance-config-changed', getBalanceConfig());
     }
@@ -74,6 +76,7 @@ function registerIpcHandlers() {
     if (config && typeof config === 'object') {
       const next = {};
       if (config.enabled !== undefined) next.enabled = !!config.enabled;
+      if (config.hoverEnabled !== undefined) next.hoverEnabled = !!config.hoverEnabled;
       if (config.intervalMinutes !== undefined) {
         const minutes = Number(config.intervalMinutes);
         // 0 表示只在双击时展示；其余限制在 1 ~ 1440 分钟之间

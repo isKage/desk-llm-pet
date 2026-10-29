@@ -43,6 +43,7 @@ function createBubbleWindow() {
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'bubble-preload.js'),
       contextIsolation: true,
+      backgroundThrottling: false,
       nodeIntegration: false
     }
   });
@@ -109,7 +110,7 @@ function showBubble(payload) {
     kind: payload.kind || 'text',
     text: payload.text || '',
     data: payload.data || null,
-    duration: Number(payload.duration) || 2500,
+    duration: payload.duration === 0 ? 0 : (Number(payload.duration) || 2500),
     scale: Number(cfg.scale) || 1
   };
 
@@ -124,6 +125,7 @@ function showBubble(payload) {
         if (getBubbleWindow()) {
           positionBubble();
           getBubbleWindow().showInactive();
+          getBubbleWindow().moveTop();
         }
       }
     }, 200);
@@ -161,6 +163,7 @@ function applyBubbleSize(size) {
   if (pendingShow) {
     pendingShow = false;
     win.showInactive();
+    win.moveTop();
   }
 }
 

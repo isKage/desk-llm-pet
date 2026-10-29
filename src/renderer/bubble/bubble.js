@@ -94,15 +94,14 @@ window.bubbleAPI.onShow((payload) => {
 
   elements.root.classList.remove('hidden');
   // 先测量（此时窗口还隐藏着），主进程拿到尺寸后定位再显示
-  requestAnimationFrame(() => {
-    reportSize();
-    const duration = Number(payload.duration) || 2500;
-    hideTimer = setTimeout(() => {
-      hideTimer = null;
-      elements.root.classList.add('hidden');
-      window.bubbleAPI.hide();
-    }, duration);
-  });
+  reportSize();
+  if (payload.duration === 0) return;
+  const duration = Number(payload.duration) || 2500;
+  hideTimer = setTimeout(() => {
+    hideTimer = null;
+    elements.root.classList.add('hidden');
+    window.bubbleAPI.hide();
+  }, duration);
 });
 
 // 窗口尺寸变化（例如用户改了气泡大小设置后重现）时重新测量

@@ -57,6 +57,7 @@ async function createPetWindow(isDev = false) {
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'pet-preload.js'),
       contextIsolation: true,
+      backgroundThrottling: false,
       nodeIntegration: false
     }
   });
@@ -92,12 +93,12 @@ async function createPetWindow(isDev = false) {
     }
   });
 
+  petWindow.on('move', notifyGeometryChange);
   petWindow.on('moved', () => {
     if (petWindow) {
       const [x, y] = petWindow.getPosition();
       saveWindowPosition(x, y);
     }
-    notifyGeometryChange();
   });
 
   petWindow.on('show', notifyGeometryChange);
@@ -131,8 +132,15 @@ function setPetOpacity(opacity) {
   petWindow.setOpacity(Number(opacity) || 1);
 }
 
+function isCursorNearPet(point, bounds, padding = 32) {
+  const dx = Math.max(bounds.x - point.x, 0, point.x - bounds.x - bounds.width);
+  const dy = Math.max(bounds.y - point.y, 0, point.y - bounds.y - bounds.height);
+  return dx * dx + dy * dy <= padding * padding;
+}
+
 module.exports = {
   createPetWindow, getPetWindow, togglePetWindow,
   setPetSize, setPetOpacity,
+  isCursorNearPet,
   setPetGeometryListener, notifyGeometryChange
 };
