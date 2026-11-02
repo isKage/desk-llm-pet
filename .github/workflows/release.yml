@@ -25,11 +25,13 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            command: npm run build:mac
+            # tag 构建时 electron-builder 默认会尝试自动发布并要求 GH_TOKEN；
+            # 这里只负责产出安装包，发布统一交给下面的 publish job
+            command: npm run build:mac -- --publish never
             artifacts: |
               dist/*.dmg
           - os: windows-latest
-            command: npm run build:win
+            command: npm run build:win -- --publish never
             artifacts: |
               dist/*.exe
     steps:
