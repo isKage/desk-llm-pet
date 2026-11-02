@@ -19,7 +19,7 @@ const { fetchBalance, formatBalanceText } = require('../shared/deepseek-api');
 const { createSettingsWindow } = require('./settings-window');
 const {
   togglePetWindow, setPetSize, setPetOpacity,
-  getPetWindow, notifyGeometryChange
+  getPetWindow, notifyGeometryChange, calcWindowSize
 } = require('./pet-window');
 const { showBubble, hideBubble, applyBubbleSize, createBubbleWindow } = require('./bubble-window');
 const {
@@ -210,7 +210,9 @@ function registerIpcHandlers() {
     }
     if (isNaN(deltaX) || isNaN(deltaY)) return;
     const [x, y] = petWin.getPosition();
-    petWin.setPosition(x + deltaX, y + deltaY);
+    // 固定使用配置尺寸，避免 Windows 非整数 DPI 缩放下 setPosition 的取整误差累积。
+    const size = calcWindowSize(getPetConfig());
+    petWin.setBounds({ x: x + deltaX, y: y + deltaY, width: size, height: size });
   });
 
   ipcMain.handle('quit-app', () => { app.quit(); return { success: true }; });

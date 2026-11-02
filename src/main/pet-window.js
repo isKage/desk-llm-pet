@@ -133,6 +133,6 @@ function setPetOpacity(opacity) {
 
 module.exports = {
   createPetWindow, getPetWindow, togglePetWindow,
-  setPetSize, setPetOpacity,
+  setPetSize, setPetOpacity, calcWindowSize,
   setPetGeometryListener, notifyGeometryChange
 };
