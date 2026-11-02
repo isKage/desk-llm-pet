@@ -161,14 +161,13 @@ function applyMenuSize(size) {
   }
 
   const win = getMenuWindow();
-  if (!win) return;
+  if (!win || !pendingAnchor) return;
 
-  const anchor = pendingAnchor || { x: 0, y: 0 };
+  const anchor = pendingAnchor;
   const display = screen.getDisplayNearestPoint({ x: anchor.x, y: anchor.y });
   win.setBounds(computeMenuBounds({ anchor, size: contentSize, workArea: display.workArea }));
 
-  if (pendingAnchor) {
-    pendingAnchor = null;
+  if (!win.isVisible()) {
     win.show();
     win.focus();
   }
