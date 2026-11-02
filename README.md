@@ -9,7 +9,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/electron-28.3.3-9feaf9.svg)](https://www.electronjs.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](#)
-[![Release](https://img.shields.io/badge/release-v1.1.0-brightgreen.svg)](https://github.com/isKage/desk-llm-pet/releases)
+[![Release](https://img.shields.io/badge/release-v1.1.1-brightgreen.svg)](https://github.com/isKage/desk-llm-pet/releases)
+[![check](https://github.com/isKage/desk-llm-pet/actions/workflows/check.yml/badge.svg)](https://github.com/isKage/desk-llm-pet/actions/workflows/check.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg)](https://github.com/isKage/desk-llm-pet/pulls)
 
 
@@ -77,11 +78,11 @@
 
 | 平台 | 安装包 | 说明 |
 |------|--------|------|
-| 🍎 macOS | `DeskLLMPet-1.1.0-arm64.dmg` | Apple Silicon (M1/M2/M3/M4) |
-| 🍎 macOS | `DeskLLMPet-1.1.0.dmg` | Intel Mac (x64) |
-| 🪟 Windows | `DeskLLMPet.Setup.1.1.0.exe` | x64 安装程序 |
+| 🍎 macOS | `DeskLLMPet-1.1.1-arm64.dmg` | Apple Silicon (M1/M2/M3/M4) |
+| 🍎 macOS | `DeskLLMPet-1.1.1.dmg` | Intel Mac (x64) |
+| 🪟 Windows | `DeskLLMPet.Setup.1.1.1.exe` | x64 安装程序 |
 
-> 打包产物本地文件名里是空格（`DeskLLMPet Setup 1.1.0.exe`），上传到 GitHub 后显示成点（`DeskLLMPet.Setup.1.1.0.exe`），是同一个文件。
+> 打包产物本地文件名里是空格（`DeskLLMPet Setup 1.1.1.exe`），上传到 GitHub 后显示成点（`DeskLLMPet.Setup.1.1.1.exe`），是同一个文件。
 
 #### macOS 安装
 
@@ -137,8 +138,8 @@ npm run build:all   # 同时打包两个平台
 
 | 命令 | 产物 |
 |------|------|
-| `npm run build:mac` | `DeskLLMPet-1.1.0.dmg`（Intel）、`DeskLLMPet-1.1.0-arm64.dmg`（Apple Silicon） |
-| `npm run build:win` | `DeskLLMPet Setup 1.1.0.exe`（安装程序）、`win-unpacked/`（免安装版） |
+| `npm run build:mac` | `DeskLLMPet-1.1.1.dmg`（Intel）、`DeskLLMPet-1.1.1-arm64.dmg`（Apple Silicon） |
+| `npm run build:win` | `DeskLLMPet Setup 1.1.1.exe`（安装程序）、`win-unpacked/`（免安装版） |
 
 > ⚠️ 打包注意事项：
 > - macOS 包必须在 macOS 上打；Windows 安装包可以在 macOS 上交叉打包（本项目 `dist/` 里的 exe 就是这么来的），失败时可加 `--config.win.signAndEditExecutable=false`，或改到 Windows 机器 / CI 上打。
@@ -356,7 +357,7 @@ npm run dev:tools  # 需要调试时：运行应用并打开 DevTools
 启动时终端第一行会打印代码目录，设置页「关于」里也能看到**运行目录**，可用来确认跑的是哪份代码：
 
 ```
-🚀 DeskLLMPet 启动 v1.1.0 | 代码目录: /path/to/DeskLLMPet | 参数: . --dev
+🚀 DeskLLMPet 启动 v1.1.1 | 代码目录: /path/to/DeskLLMPet | 参数: . --dev
 ```
 
 ### 🧩 插件开发
