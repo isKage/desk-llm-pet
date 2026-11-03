@@ -6,22 +6,43 @@
 
 ## [Unreleased]
 
+（暂无）
+
+## [1.2.0] - 2026-11-03
+
+> [对比 v1.1.1 的完整变更](https://github.com/isKage/desk-llm-pet/compare/v1.1.1...v1.2.0)
+
+这一版的核心是**插件框架**：插件可以像 Minecraft 模组一样打包成 `.dlmpet`，在设置页选择或拖入即可安装，安装后立即生效，不需要改项目代码。同时修复了内置 AI 对话请求偶发 `read ECONNRESET` 的问题。
+
 ### 新增
 
-- 设置页新增「插件」管理页：支持选择 `.dlmpet` 插件包、拖拽安装，或把插件包放进插件目录后自动扫描安装。
-- 插件安装器：校验插件包、解压安装、启用/禁用、卸载（可保留数据）、SHA-256 校验值与安装来源记录。
-- 插件文档：`docs/plugins/installing.md`、`docs/plugins/packaging.md`，以及 `npm run pack:plugin` 打包脚本。
+- 🧩 **插件框架**：内置/用户插件双目录发现、启用/禁用、热重载、安装/卸载、旧数据迁移。
+- 📦 **一键安装插件**：设置 → 🧩 插件，选择或拖入 `.dlmpet` 插件包；也可以放进插件目录后点「重新扫描」自动安装。
+- 🔍 **安装前校验**：预览名称/版本/作者/大小，校验包结构、路径安全、大小限制与来源；卸载时可选择保留插件数据。
+- 📚 **插件开发与打包**：新增插件开发/安装/打包文档与 `npm run pack:plugin`，可选插件可以独立打包装进主程序。
+- 🐾 **可选示例插件**：多桌宠克隆（`dlp-multi-pets`），支持克隆多个桌宠、共享主程序设置、右键删除克隆体；该插件不随主程序内置，需单独安装。
+- 🧹 文档统一收敛到 `docs/`，新增 `npm run clean`、文档链接检查与插件安装器回归测试。
 
 ### 修复
 
-- **AI 对话网络请求失败（read ECONNRESET）**：对话请求现在会带 `User-Agent`，避免被 API 边缘节点当作异常流量重置连接；余额查询请求也补上了同样的标识。
+- **AI 对话网络请求失败（`read ECONNRESET`）**：对话请求补充 `User-Agent`，避免被 API 边缘节点当作异常流量重置连接；余额查询请求也补上同样标识。
 - 聊天窗口的网络错误提示改为「请检查网络连接，或稍后重试」，不再一律提示检查配置。
 
 ### 变更
 
-- 文档统一收敛到 `docs/`；根目录只保留 README、CHANGELOG、CONTRIBUTING、LICENSE 与运行必需目录。
-- 版本号与发布说明改为单一来源：`package.json` 管版本号，本文件管发布历史。
-- 删除打包配置中未使用的 `extraResources`，避免安装包重复携带素材。
+- 版本号只由 `package.json` 决定，发布历史只维护 `CHANGELOG.md`；Release 正文由 `release-notes.js` 从本文件提取。
+- 设置页文案精简，去掉文件路径、公式和实现细节；设置页「关于」版本号改为运行时读取。
+- 移除打包配置中未使用的 `extraResources`，避免安装包重复携带素材。
+
+### 下载与升级
+
+- 安装包：[GitHub Release v1.2.0](https://github.com/isKage/desk-llm-pet/releases/tag/v1.2.0)
+  - macOS（Apple Silicon）：`DeskLLMPet-1.2.0-arm64.dmg`
+  - macOS（Intel）：`DeskLLMPet-1.2.0.dmg`
+  - Windows x64：`DeskLLMPet.Setup.1.2.0.exe`
+- **Windows**：双击新版 `.exe` 原地覆盖升级；**macOS**：双击 `.dmg`，把应用拖进「应用程序」选 **替换**。
+- 配置、内置插件数据与已安装插件都会保留；升级前先在托盘「退出」旧版本（应用是单实例）。
+- 安装包仍未做代码签名 / 公证：macOS 首次打开需右键 → 打开，Windows 可能弹 SmartScreen。
 
 ## [1.1.1] - 2026-11-02
 

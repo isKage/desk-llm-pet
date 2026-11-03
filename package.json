@@ -1,6 +1,6 @@
 {
   "name": "deskllmpet",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "桌面宠物 - 支持 API 余额气泡、插件化扩展的交互式桌面伴侣",
   "main": "src/main/main.js",
   "author": "isKage",

@@ -16,6 +16,7 @@
 | 文档 | 内容 |
 |---|---|
 | [安装与管理插件](plugins/installing.md) | 设置页选包/拖拽安装、插件目录、启用禁用、卸载、安全提示 |
+| [插件市场（GitHub）](https://github.com/isKage/desk-llm-pet-plugins-market) | 浏览、下载更多可选插件 |
 | [打包插件](plugins/packaging.md) | `npm run pack:plugin`、`.dlmpet` 包结构、发布到 GitHub Release |
 | [插件开发指南](plugins/development.md) | 清单字段、`activate(ctx)`、菜单/设置/IPC/窗口/存储接口 |
 

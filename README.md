@@ -15,6 +15,8 @@
 
 </div>
 
+NEWS: 插件框架大更新, 制作个性化插件! [More Info](#plugin)
+
 > 本项目**完全由 DeepSeek Harness 生成**。
 
 > 感谢 [dsh-pet](https://github.com/PC2005-cloud/dsh-pet) 项目的灵感，本项目的所有动画素材均来自 dsh-pet 项目。
@@ -29,6 +31,16 @@
 </div>
 
 ---
+
+**插件市场**：到 [desk-llm-pet-plugins-market](https://github.com/isKage/desk-llm-pet-plugins-market) 探索更多可选插件
+
+![](docs/assets/plugin.png)
+
+> 例如: 多桌宠插件, 享受鱼灾的快乐 😎 [多桌宠克隆 v1.0.0](https://github.com/isKage/desk-llm-pet-plugins-market/releases)
+
+![](docs/assets/clone.png)
+
+
 
 ## ✨ 功能特性
 
@@ -48,6 +60,7 @@
 
 ### 🧩 插件化扩展
 - **像模组一样安装**：下载 `.dlmpet` 插件包，在 **设置 → 🧩 插件** 中选择/拖入即可；也可以直接放进插件目录，重启或点「重新扫描」自动安装。
+- **插件市场**：到 [desk-llm-pet-plugins-market](https://github.com/isKage/desk-llm-pet-plugins-market) 探索更多可选插件，下载 `.dlmpet` 后按上面的方式安装。
 - **完全解耦**：插件加载失败只跳过该插件，本体照常运行。
 - **扩展点**：桌宠右键菜单、系统托盘菜单、设置页表单、命名空间化 IPC、插件独立存储与窗口。
 - **内置 AI 对话**：多会话管理、流式回复、历史本地保存。
@@ -103,6 +116,9 @@ npm run dev
 
 ## 🧩 插件
 
+<a id="plugin"></a>
+
+- **探索更多插件**：**[DeskLLMPet 插件市场](https://github.com/isKage/desk-llm-pet-plugins-market)** — 官方与社区可选插件会在这里持续更新。
 - **安装与管理**：**[安装与管理插件](docs/plugins/installing.md)**
 - **开发指南**：**[插件开发指南](docs/plugins/development.md)**
 - **打包成 `.dlmpet`**：**[打包插件](docs/plugins/packaging.md)**

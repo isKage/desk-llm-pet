@@ -81,11 +81,12 @@ node scripts/pack-plugin.js path/to/my-plugin --out ./release-plugins
 
 也可以直接把包放进插件目录，重启或点「重新扫描」测试自动安装。
 
-## 5. 发布到 GitHub Release
+## 5. 发布到 GitHub Release 与插件市场
 
 1. 在插件自己的仓库/Release 中上传 `<id>-<version>.dlmpet`；
 2. 在说明里写清：支持的 DeskLLMPet 版本（`apiVersion`）、安装方法、权限/网络访问说明；
-3. 用户下载后在设置页安装即可。
+3. 用户下载后在设置页安装即可；
+4. 也可以把插件提交到 [DeskLLMPet 插件市场](https://github.com/isKage/desk-llm-pet-plugins-market)，让用户在应用外发现；提交方式与索引格式以市场仓库说明为准。
 
 ## 6. 包大小与安全限制
 
@@ -102,5 +103,6 @@ node scripts/pack-plugin.js path/to/my-plugin --out ./release-plugins
 
 ## 7. 相关文档
 
+- [DeskLLMPet 插件市场](https://github.com/isKage/desk-llm-pet-plugins-market)
 - [安装与管理插件](installing.md)
 - [插件开发指南](development.md)

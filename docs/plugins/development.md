@@ -12,6 +12,8 @@
 |------|------|
 | [`llm-chat`](../../src/plugins/llm-chat) | AI 对话窗口（多会话、流式回复、独立配置） |
 
+> 🛒 更多可选插件与收录信息见 [DeskLLMPet 插件市场](https://github.com/isKage/desk-llm-pet-plugins-market)。
+
 ---
 
 ## 1. 目录结构
@@ -190,7 +192,25 @@ win.once('ready-to-show', () => win.show());
 
 ---
 
-## 6. 自检
+## 6. 发布与插件市场
+
+插件开发完成、本地测试通过后：
+
+1. 用 `npm run pack:plugin -- <插件目录>` 生成 `.dlmpet`；
+2. 在插件自己的仓库 / GitHub Release 上传插件包；
+3. 到 [DeskLLMPet 插件市场](https://github.com/isKage/desk-llm-pet-plugins-market) 提交收录或发布信息；
+4. 用户即可在 **设置 → 🧩 插件** 中安装。
+
+发布时建议写清楚：
+
+- 适用版本（`apiVersion` / 最低主程序版本）；
+- 插件用途、权限与网络访问说明；
+- 安装/卸载后是否需要保留数据；
+- 更新日志与问题反馈地址。
+
+> 插件市场目前是 GitHub 仓库形式；提交方式、索引格式与审核规则以市场仓库说明为准。
+
+## 7. 自检
 
 ```bash
 npm run check           # 静态自检（不需要 GUI，秒级）

@@ -2,6 +2,9 @@
 
 DeskLLMPet 的插件：下载一个插件包，放进插件目录并在应用里安装/启用即可，**不需要改项目代码**。
 
+> 🛒 **探索更多插件**：到 [DeskLLMPet 插件市场](https://github.com/isKage/desk-llm-pet-plugins-market) 浏览官方与社区插件。
+> 从市场下载 `.dlmpet` 后，按下面的步骤安装即可；市场仓库里也会说明每个插件的用途和兼容版本。
+
 ## 1. 插件目录
 
 | 内容 | 路径 |
@@ -82,6 +85,7 @@ DeskLLMPet 的插件：下载一个插件包，放进插件目录并在应用里
 
 ## 7. 相关文档
 
+- [插件市场](https://github.com/isKage/desk-llm-pet-plugins-market)
 - [打包插件](packaging.md)
 - [插件开发指南](development.md)
 - [常见问题](../guide/faq.md)

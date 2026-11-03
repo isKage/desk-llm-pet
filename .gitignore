@@ -45,3 +45,6 @@ assets/thumb/*.webm
 
 # ====== macOS 应用包 ======
 *.app
+
+# ====== 插件开发测试 ======
+plugins-develop/
