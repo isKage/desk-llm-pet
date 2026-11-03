@@ -16,7 +16,7 @@
 npm run check
 ```
 
-`npm run check` 会依次运行 `scripts/check-*.js` 里的回归脚本和 `scripts/self-check.js`（静态结构检查），CI 也会执行同一条命令。提 PR 前请确认全绿。
+`npm run check` 会依次运行菜单锚点回归、插件安装器测试、文档链接检查和 `scripts/self-check.js`（静态结构检查），CI 也会执行同一条命令。提 PR 前请确认全绿；本机有 GUI 时再跑一次 `npm run check:renderer`。
 
 ### 修 Bug 请带一个会失败的测试
 
@@ -44,18 +44,21 @@ npm run check
 | `src/preload/` | 各窗口的预加载脚本（仅暴露必要 API） |
 | `src/renderer/` | 各窗口页面（原生 HTML/CSS/JS） |
 | `src/shared/` | 主进程共享模块：存储、DeepSeek API |
-| `src/plugins/` | 插件（插件出错不影响本体） |
-| `scripts/` | 自检与回归脚本 |
+| `src/plugins/` | 插件宿主、清单校验、插件安装器与内置插件 |
+| `docs/` | 使用、插件、开发与发布文档 |
+| `scripts/` | 自检、回归、安装器测试、文档检查、打包脚本 |
 
 约定：渲染进程不开 `nodeIntegration`，一律走 preload + IPC；窗口位置/尺寸统一用 `setBounds`，不要复用系统取整后的实际尺寸。
 
 ## 发布流程（维护者）
 
-1. 更新 `package.json` 版本号（同时会更新 `package-lock.json`）。
-2. 新增 `RELEASE_v<版本>.md`，里面要出现版本号、三个安装包文件名。
-3. 同步 `src/renderer/settings/settings.html`「关于」里的版本号，以及 README 的下载表格。`npm run check` 会校验这三处一致。
+1. 更新版本号并插入 CHANGELOG 段落：`npm run release:prepare -- <版本>`。
+2. 补全 `CHANGELOG.md` 对应版本的内容（新增/修复/变更/下载）。
+3. 跑通 `npm run check`（有 GUI 时再跑 `npm run check:renderer`）。
 4. 提交并推送 `main`，然后打 tag：`git tag v<版本> && git push origin v<版本>`。
-5. tag 会触发 `release` workflow，自动构建 macOS / Windows 安装包并发布 GitHub Release。
+5. tag 会触发 `release` workflow：自动构建 macOS / Windows 安装包，并用 `scripts/release-notes.js` 从 `CHANGELOG.md` 提取发布正文。
+
+版本号只以 `package.json` 为准，发布历史只维护 `CHANGELOG.md`；README 和设置页不再写死版本号。详见 [本地开发与发布](docs/dev/development.md)。
 
 ## 安全问题
 

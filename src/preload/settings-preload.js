@@ -45,8 +45,29 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
   // ====== 插件扩展点 ======
-  // 已加载的插件列表
+  // 已加载的插件列表（含内置/已安装/手动放入、状态、错误信息）
   getPlugins: () => ipcRenderer.invoke('plugins:list'),
+  // 插件目录 / 数据目录
+  getPluginPaths: () => ipcRenderer.invoke('plugins:get-paths'),
+  // 选择插件包（只负责打开文件对话框，不安装）
+  pickPluginPackage: () => ipcRenderer.invoke('plugins:pick-package'),
+  // 预览插件包（只读校验）
+  inspectPluginPackage: (filePath) => ipcRenderer.invoke('plugins:inspect-package', filePath),
+  // 安装插件包
+  installPluginPackage: (filePath, options) => ipcRenderer.invoke('plugins:install-package', filePath, options),
+  // 卸载插件（options.deleteData 控制是否同时删除 plugin-data）
+  uninstallPlugin: (pluginId, options) => ipcRenderer.invoke('plugins:uninstall', pluginId, options),
+  // 启用 / 禁用插件
+  setPluginEnabled: (pluginId, enabled) => ipcRenderer.invoke('plugins:set-enabled', pluginId, enabled),
+  // 重新扫描插件目录并热重载
+  reloadPlugins: () => ipcRenderer.invoke('plugins:reload'),
+  // 打开插件目录 / 某个插件的目录
+  openPluginsDir: () => ipcRenderer.invoke('plugins:open-dir'),
+  openPluginDir: (pluginId) => ipcRenderer.invoke('plugins:open-plugin-dir', pluginId),
+  // 监听：插件加载状态变化（安装/卸载/重载后刷新列表与设置面板）
+  onPluginsChanged: (callback) => {
+    ipcRenderer.on('plugins:changed', (event, payload) => callback(payload));
+  },
   // 插件声明的设置面板（title / fields / actions）
   getPluginSettingsSections: () => ipcRenderer.invoke('plugins:get-settings-sections'),
   // 读取 / 保存某个插件的设置

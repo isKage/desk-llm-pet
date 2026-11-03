@@ -164,6 +164,9 @@ function requestChat(config, messages, options = {}) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
+        // DeepSeek 的边缘节点会重置「没有 User-Agent」的 POST 请求（read ECONNRESET），
+        // 这里显式带上客户端标识，避免被误判为异常流量。
+        'User-Agent': 'DeskLLMPet',
         Accept: stream ? 'text/event-stream' : 'application/json',
         'Content-Length': Buffer.byteLength(body)
       },

@@ -2,8 +2,9 @@
   "id": "llm-chat",
   "name": "AI 对话",
   "version": "1.0.0",
-  "description": "独立的 AI 对话窗口：多会话管理、流式回复、历史本地保存。支持 DeepSeek / OpenAI 等兼容接口。",
+  "description": "独立的 AI 对话窗口，支持多会话、流式回复和本地保存。",
   "author": "isKage",
+  "apiVersion": 1,
   "main": "main.js",
   "preload": "preload.js",
   "enabled": true,
@@ -17,7 +18,7 @@
     "settings": {
       "title": "AI 对话",
       "icon": "💬",
-      "description": "本插件自带独立的配置与对话历史，与「API 配置」中的余额查询互不影响；留空的项目会回退使用本体的 API Key / 地址。",
+      "description": "独立配置 AI 对话；留空则使用本体的 API 配置。",
       "fields": [
         {
           "key": "apiKey",
@@ -25,7 +26,7 @@
           "type": "password",
           "default": "",
           "placeholder": "sk-xxxxxxxxxxxxxxxx",
-          "hint": "留空则回退使用「API 配置」里的 Key；仅保存在本地"
+          "hint": "留空则使用「API 配置」中的 Key。"
         },
         {
           "key": "apiEndpoint",
@@ -33,7 +34,7 @@
           "type": "text",
           "default": "",
           "placeholder": "https://api.deepseek.com",
-          "hint": "可填 base 地址（自动补 /v1/chat/completions），也可直接填完整的 /chat/completions 地址；留空回退使用「API 配置」里的地址"
+          "hint": "留空则使用「API 配置」中的地址。"
         },
         {
           "key": "model",
@@ -41,34 +42,34 @@
           "type": "text",
           "default": "deepseek-chat",
           "placeholder": "deepseek-chat",
-          "hint": "DeepSeek 可选 deepseek-chat / deepseek-reasoner"
+          "hint": "如 deepseek-chat、deepseek-reasoner。"
         },
         {
           "key": "temperature",
-          "label": "随机性 temperature",
+          "label": "随机性",
           "type": "number",
           "default": 0.7,
           "min": 0,
           "max": 2,
           "step": 0.1,
-          "hint": "0 ~ 2，越大回答越发散"
+          "hint": "越大回答越发散。"
         },
         {
           "key": "maxTokens",
-          "label": "单次回复上限 max_tokens",
+          "label": "单次回复上限",
           "type": "number",
           "default": 2048,
           "min": 1,
           "max": 65536,
           "step": 1,
-          "hint": "限制单次回复的最大 token 数"
+          "hint": "单次回复的最大长度。"
         },
         {
           "key": "stream",
           "label": "流式输出",
           "type": "boolean",
           "default": true,
-          "hint": "开启后回复逐字显示，关闭则一次性返回"
+          "hint": "开启后逐字显示。"
         },
         {
           "key": "systemPrompt",
@@ -76,7 +77,7 @@
           "type": "textarea",
           "default": "你是 DeskLLMPet 的桌面宠物助手，名字叫「大肥鱼」。回答简洁、友好、有条理；能用列表就用列表。",
           "rows": 3,
-          "hint": "定义 AI 的身份与回答风格"
+          "hint": "定义 AI 的身份和回答风格。"
         }
       ],
       "actions": [

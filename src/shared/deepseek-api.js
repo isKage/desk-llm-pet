@@ -83,6 +83,7 @@ function fetchBalance(config) {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'DeskLLMPet',
         'Accept': 'application/json'
       },
       timeout: 15000

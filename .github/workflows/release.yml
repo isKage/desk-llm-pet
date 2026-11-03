@@ -81,6 +81,11 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Extract release notes from CHANGELOG
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: node scripts/release-notes.js "$TAG" > release-notes.md
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,5 +98,5 @@ jobs:
           else
             gh release create "$TAG" artifacts/* \
               --title "DeskLLMPet $TAG" \
-              --notes-file "RELEASE_${TAG}.md"
+              --notes-file release-notes.md
           fi

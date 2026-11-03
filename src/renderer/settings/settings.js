@@ -43,6 +43,8 @@ async function init() {
 
   // 插件设置面板（没有插件时什么都不做）
   await renderPluginSections();
+  // 插件安装/管理页
+  await initPluginManagement();
 
   console.log('⚙️ 设置窗口已就绪');
 }
@@ -102,6 +104,23 @@ function cacheElements() {
   elements.balancePhrases = document.getElementById('balance-phrases');
   elements.balancePhrasesHint = document.getElementById('balance-phrases-hint');
   elements.btnPreviewPhrase = document.getElementById('btn-preview-phrase');
+
+  // 插件管理
+  elements.pluginDropzone = document.getElementById('plugin-dropzone');
+  elements.pluginUserDir = document.getElementById('plugin-user-dir');
+  elements.btnInstallPlugin = document.getElementById('btn-install-plugin');
+  elements.btnOpenPluginDir = document.getElementById('btn-open-plugin-dir');
+  elements.btnReloadPlugins = document.getElementById('btn-reload-plugins');
+  elements.pluginInstallProgress = document.getElementById('plugin-install-progress');
+  elements.pluginList = document.getElementById('plugin-list');
+  elements.pluginCount = document.getElementById('plugin-count');
+  elements.pluginModal = document.getElementById('plugin-modal');
+  elements.pluginModalTitle = document.getElementById('plugin-modal-title');
+  elements.pluginModalBody = document.getElementById('plugin-modal-body');
+  elements.pluginTrustRow = document.getElementById('plugin-trust-row');
+  elements.pluginTrustCheck = document.getElementById('plugin-trust-check');
+  elements.pluginModalCancel = document.getElementById('plugin-modal-cancel');
+  elements.pluginModalConfirm = document.getElementById('plugin-modal-confirm');
 }
 
 /**
@@ -320,7 +339,7 @@ function renderAnimationList(type) {
   if (animations.length === 0) {
     listEl.innerHTML = `<div class="anim-empty">
       📁 暂无动画文件<br>
-      <small>请将 .webm 文件放入 assets/animations/${type}/ 目录</small>
+      <small>添加 .webm 动画后重新打开设置页即可看到</small>
     </div>`;
     return;
   }
@@ -384,7 +403,7 @@ async function addAnimationFile(type) {
     if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
 
     // 这里只是通知用户需要手动复制文件
-    alert(`请将选中的 .webm 文件复制到 assets/animations/${type}/ 目录下，然后刷新动画列表。`);
+    alert('请把选中的 .webm 文件添加到动画目录，然后重新打开设置页。');
   } catch (e) {
     console.error('选择文件失败:', e);
   }
@@ -527,8 +546,8 @@ function updatePhraseHint() {
   const enabled = elements.balanceEnabled.checked;
   elements.balancePhrases.classList.toggle('inactive', enabled);
   elements.balancePhrasesHint.textContent = enabled
-    ? '当前启用了余额气泡：双击桌宠展示余额，这些语句暂不生效'
-    : '未启用余额气泡：双击桌宠会从这里随机展示一句；留空则使用内置问候语';
+    ? '启用余额气泡时，这些语句暂不生效。'
+    : '双击桌宠时随机展示其中一句；留空则使用内置语句。';
 }
 
 /** 预览一句自定义语句（随机挑一句，未保存也能看效果） */
@@ -642,22 +661,39 @@ function pluginFieldId(pluginId, key) {
   return `plugin-${pluginId}-${key}`;
 }
 
-/** 拉取所有插件的设置面板并插入到标签栏 */
+// 清空动态插件设置标签/面板（卸载或重载后避免重复）
+function clearPluginSections() {
+  document.querySelectorAll('#tab-nav .tab-btn[data-plugin-tab="1"]').forEach((el) => el.remove());
+  document.querySelectorAll('#tab-content .tab-panel[data-plugin-tab="1"]').forEach((el) => el.remove());
+}
+
+/** 拉取所有插件的设置面板并插入到标签栏（可重复调用，自动去重） */
 async function renderPluginSections() {
   if (typeof window.settingsAPI.getPluginSettingsSections !== 'function') return;
+
+  const activeTab = document.querySelector('#tab-nav .tab-btn.active')?.dataset.tab || '';
+  clearPluginSections();
 
   let sections = [];
   try {
     sections = await window.settingsAPI.getPluginSettingsSections();
   } catch (e) {
     console.warn('插件设置加载失败（不影响本体）:', e.message);
+    if (activeTab.startsWith('plugin-')) switchTab('plugins');
     return;
   }
-  if (!Array.isArray(sections) || sections.length === 0) return;
+  if (!Array.isArray(sections) || sections.length === 0) {
+    if (activeTab.startsWith('plugin-')) switchTab('plugins');
+    return;
+  }
 
   const nav = document.getElementById('tab-nav');
   const content = document.getElementById('tab-content');
   if (!nav || !content) return;
+
+  // 插件设置标签统一插到「关于」前面，保持使用类标签在前、插件配置在后
+  const aboutBtn = nav.querySelector('.tab-btn[data-tab="about"]');
+  const aboutPanel = document.getElementById('tab-about');
 
   for (const section of sections) {
     if (!section || !section.pluginId) continue;
@@ -666,20 +702,28 @@ async function renderPluginSections() {
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
     btn.dataset.tab = tabName;
+    btn.dataset.pluginTab = '1';
     btn.textContent = `${section.icon || '🧩'} ${section.title || section.pluginId}`;
-    nav.appendChild(btn);
+    nav.insertBefore(btn, aboutBtn || null);
 
     const panel = document.createElement('section');
     panel.className = 'tab-panel';
     panel.id = `tab-${tabName}`;
+    panel.dataset.pluginTab = '1';
     panel.innerHTML = buildPluginPanelHtml(section);
-    content.appendChild(panel);
+    content.insertBefore(panel, aboutPanel || null);
 
     try {
       await bindPluginPanel(section, panel);
     } catch (e) {
       console.warn(`插件设置面板初始化失败 [${section.pluginId}]:`, e.message);
     }
+  }
+
+  // 之前停留的插件标签：还在就重新激活，被卸载了就回到插件管理页
+  if (activeTab.startsWith('plugin-')) {
+    if (document.getElementById(`tab-${activeTab}`)) switchTab(activeTab);
+    else switchTab('plugins');
   }
 
   console.log(`🧩 已加载 ${sections.length} 个插件设置面板`);
@@ -836,6 +880,494 @@ function showPluginResult(panel, ok, text) {
   if (!el) return;
   el.className = `test-result ${ok ? 'success' : 'error'}`;
   el.textContent = text;
+}
+
+
+// ============================================================================
+// 插件管理（安装 / 启用 / 卸载 / 重新扫描）
+// ============================================================================
+
+state.plugins = [];
+state.pluginPaths = {};
+state.pluginBusy = false;
+state.pluginModalAction = null;
+let pluginRefreshTimer = null;
+let pluginRefreshSeq = 0;
+
+/** 初始化插件管理页：绑定事件、加载列表、监听插件变化 */
+async function initPluginManagement() {
+  if (!elements.pluginList) return;
+  bindPluginManagement();
+  await refreshPluginUi();
+  if (typeof window.settingsAPI.onPluginsChanged === 'function') {
+    window.settingsAPI.onPluginsChanged(() => schedulePluginRefresh());
+  }
+}
+
+/** 插件变化后防抖刷新，避免重载期间多次拉取 */
+function schedulePluginRefresh() {
+  if (pluginRefreshTimer) clearTimeout(pluginRefreshTimer);
+  pluginRefreshTimer = setTimeout(() => {
+    pluginRefreshTimer = null;
+    refreshPluginUi().catch(() => { /* 页面关闭时忽略 */ });
+  }, 200);
+}
+
+/** 刷新插件列表 + 插件设置标签（用序号丢弃过期的并发刷新） */
+async function refreshPluginUi() {
+  const seq = ++pluginRefreshSeq;
+  await refreshPluginList(seq);
+  if (seq !== pluginRefreshSeq) return;
+  await renderPluginSections();
+}
+
+/** 拉取插件目录、路径并渲染列表 */
+async function refreshPluginList(seq) {
+  if (!elements.pluginList) return;
+  try {
+    const [plugins, paths] = await Promise.all([
+      typeof window.settingsAPI.getPlugins === 'function' ? window.settingsAPI.getPlugins() : [],
+      typeof window.settingsAPI.getPluginPaths === 'function' ? window.settingsAPI.getPluginPaths() : null
+    ]);
+    if (seq !== undefined && seq !== pluginRefreshSeq) return;
+    state.plugins = Array.isArray(plugins) ? plugins : [];
+    state.pluginPaths = paths || {};
+    if (elements.pluginUserDir) {
+      elements.pluginUserDir.textContent = `插件目录：${state.pluginPaths.userPluginsDir || '未知'}`;
+    }
+    renderPluginList();
+  } catch (e) {
+    console.warn('读取插件列表失败:', e.message);
+    elements.pluginList.innerHTML = `<div class="plugin-empty">插件列表读取失败：${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/** 渲染插件卡片列表 */
+function renderPluginList() {
+  const list = elements.pluginList;
+  if (!list) return;
+  if (!state.plugins.length) {
+    list.innerHTML = `<div class="plugin-empty">
+      🧩 还没有插件<br>
+      <small>下载 .dlmpet 后点「选择插件包」，或把文件放进插件目录再点「重新扫描」</small>
+    </div>`;
+    if (elements.pluginCount) elements.pluginCount.textContent = '0 个';
+    return;
+  }
+
+  if (elements.pluginCount) elements.pluginCount.textContent = `${state.plugins.length} 个`;
+
+  list.innerHTML = state.plugins.map((plugin) => {
+    const origin = plugin.origin || 'package';
+    const originText = origin === 'builtin' ? '内置' : origin === 'manual' ? '手动放入' : '已安装';
+    const statusText = plugin.status === 'active' ? '已启用'
+      : plugin.status === 'error' ? '加载失败' : '已禁用';
+    const statusClass = plugin.status === 'active' ? 'active'
+      : plugin.status === 'error' ? 'error' : 'disabled';
+    const canUninstall = origin !== 'builtin';
+    const canOpenFolder = origin !== 'builtin';
+    const canSettings = plugin.hasSettings && plugin.status === 'active';
+    const toggleDisabled = plugin.locked ? 'disabled' : '';
+    const toggleTitle = plugin.locked ? '作者在 plugin.json 中禁用了该插件' : '';
+
+    return `
+      <div class="plugin-item" data-plugin-id="${escapeAttr(plugin.id)}">
+        <div class="plugin-item-icon">🧩</div>
+        <div class="plugin-item-main">
+          <div class="plugin-item-head">
+            <span class="plugin-item-name">${escapeHtml(plugin.name || plugin.id)}</span>
+            ${plugin.version ? `<span class="plugin-version">v${escapeHtml(plugin.version)}</span>` : ''}
+            <span class="plugin-badge ${escapeAttr(origin)}">${originText}</span>
+            <span class="plugin-status ${escapeAttr(statusClass)}">${statusText}</span>
+          </div>
+          <div class="plugin-item-desc">${escapeHtml(plugin.description || '（没有填写描述）')}</div>
+          <div class="plugin-item-meta">
+            ${plugin.author ? `<span>作者: ${escapeHtml(plugin.author)}</span>` : ''}
+            ${plugin.error ? `<span class="plugin-error" title="${escapeAttr(plugin.error)}">⚠ ${escapeHtml(plugin.error)}</span>` : ''}
+          </div>
+        </div>
+        <div class="plugin-item-actions">
+          <button class="plugin-action" data-plugin-action="toggle" ${toggleDisabled} title="${escapeAttr(toggleTitle)}">
+            ${plugin.enabled ? '禁用' : '启用'}
+          </button>
+          <button class="plugin-action" data-plugin-action="settings" ${canSettings ? '' : 'disabled'} title="${canSettings ? '打开该插件的设置面板' : '该插件没有设置面板'}">设置</button>
+          ${canOpenFolder ? '<button class="plugin-action" data-plugin-action="folder">目录</button>' : ''}
+          ${canUninstall ? '<button class="plugin-action danger" data-plugin-action="uninstall">卸载</button>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/** 绑定插件管理页的所有事件（只绑定一次） */
+function bindPluginManagement() {
+  elements.btnInstallPlugin?.addEventListener('click', openPluginPicker);
+  elements.btnOpenPluginDir?.addEventListener('click', openPluginsDirectory);
+  elements.btnReloadPlugins?.addEventListener('click', reloadPluginsFromUi);
+
+  if (elements.pluginDropzone) {
+    elements.pluginDropzone.addEventListener('click', () => {
+      if (!state.pluginBusy) openPluginPicker();
+    });
+    elements.pluginDropzone.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !state.pluginBusy) {
+        e.preventDefault();
+        openPluginPicker();
+      }
+    });
+    elements.pluginDropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      elements.pluginDropzone.classList.add('dragover');
+    });
+    elements.pluginDropzone.addEventListener('dragleave', () => {
+      elements.pluginDropzone.classList.remove('dragover');
+    });
+    elements.pluginDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      elements.pluginDropzone.classList.remove('dragover');
+      if (state.pluginBusy) return;
+      const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+      if (files.length === 0) return;
+      if (files.length > 1) {
+        showToast('一次只能安装一个插件包');
+        return;
+      }
+      const filePath = files[0].path;
+      if (!filePath) {
+        showToast('无法读取拖入文件路径，请用「选择插件包」按钮');
+        return;
+      }
+      inspectAndPreview(filePath).catch((err) => showPluginProgress('error', `❌ 校验失败：${err.message}`));
+    });
+  }
+
+  elements.pluginList?.addEventListener('click', onPluginListClick);
+  elements.pluginModalCancel?.addEventListener('click', closePluginModal);
+  elements.pluginModal?.querySelector('[data-modal-close]')?.addEventListener('click', closePluginModal);
+  elements.pluginTrustCheck?.addEventListener('change', updatePluginModalConfirm);
+  elements.pluginModalConfirm?.addEventListener('click', () => {
+    const action = state.pluginModalAction;
+    if (typeof action === 'function') action();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && elements.pluginModal && !elements.pluginModal.classList.contains('hidden')) {
+      closePluginModal();
+    }
+  });
+
+  // 防止文件拖到页面其他地方时浏览器直接打开文件
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => e.preventDefault());
+}
+
+/** 插件卡片上的按钮点击 */
+function onPluginListClick(e) {
+  if (state.pluginBusy) return;
+  const button = e.target.closest('button[data-plugin-action]');
+  if (!button) return;
+  const item = button.closest('[data-plugin-id]');
+  if (!item) return;
+  const plugin = state.plugins.find((p) => p.id === item.dataset.pluginId);
+  if (!plugin) return;
+  const action = button.dataset.pluginAction;
+
+  if (action === 'toggle') togglePlugin(plugin);
+  else if (action === 'settings') openPluginSettings(plugin);
+  else if (action === 'folder') openPluginFolder(plugin);
+  else if (action === 'uninstall') confirmUninstallPlugin(plugin);
+}
+
+/** 选择插件包 → 预览 */
+async function openPluginPicker() {
+  if (state.pluginBusy) return;
+  if (typeof window.settingsAPI.pickPluginPackage !== 'function') {
+    showToast('当前版本不支持插件安装');
+    return;
+  }
+  try {
+    const picked = await window.settingsAPI.pickPluginPackage();
+    if (!picked || picked.canceled) return;
+    if (picked.error) {
+      showToast(`❌ ${picked.error}`);
+      return;
+    }
+    if (picked.filePath) await inspectAndPreview(picked.filePath);
+  } catch (e) {
+    showPluginProgress('error', `❌ 选择文件失败：${e.message}`);
+  }
+}
+
+/** 只读校验插件包并打开预览 */
+async function inspectAndPreview(filePath) {
+  showPluginProgress('info', '⏳ 正在校验插件包...');
+  const info = await window.settingsAPI.inspectPluginPackage(filePath);
+  if (!info || !info.ok) {
+    showPluginProgress('error', `❌ 插件包校验失败：${(info && info.error) || '未知错误'}`);
+    return;
+  }
+  clearPluginProgress();
+  showInstallPreview(filePath, info);
+}
+
+/** 生成插件包信息行 */
+function makeInfoRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'plugin-info-row';
+  const labelEl = document.createElement('span');
+  labelEl.className = 'plugin-info-label';
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.className = 'plugin-info-value';
+  valueEl.textContent = value == null ? '' : String(value);
+  row.append(labelEl, valueEl);
+  return row;
+}
+
+/** 安装预览模态框 */
+function showInstallPreview(filePath, info) {
+  const manifest = info.manifest || {};
+  const body = document.createElement('div');
+
+  body.appendChild(makeInfoRow('名称', manifest.name || manifest.id || ''));
+  body.appendChild(makeInfoRow('版本', manifest.version || ''));
+  body.appendChild(makeInfoRow('作者', manifest.author || '（未填写）'));
+  body.appendChild(makeInfoRow('说明', manifest.description || '（未填写）'));
+  body.appendChild(makeInfoRow('文件', `${info.fileCount || 0} 个 / ${formatPluginBytes(info.totalBytes || 0)}`));
+
+  const warnings = [];
+  if (Array.isArray(info.warnings)) warnings.push(...info.warnings);
+  if (info.installed) {
+    warnings.push(`已安装 v${info.installed.version}，将覆盖旧版本，插件数据保留。`);
+  }
+  if (info.downgrade) {
+    warnings.push('这是降级安装：新版本低于已安装版本');
+  }
+  if (info.conflict) {
+    warnings.push('插件 id 与内置插件冲突，不能安装');
+  }
+
+  if (warnings.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'plugin-warnings';
+    for (const text of warnings) {
+      const p = document.createElement('div');
+      p.className = 'plugin-warning-item';
+      p.textContent = `⚠ ${text}`;
+      wrap.appendChild(p);
+    }
+    body.appendChild(wrap);
+  }
+
+  openPluginModal({
+    title: '安装插件',
+    body,
+    trust: !info.conflict,
+    confirmLabel: '安装',
+    confirmEnabled: !info.conflict,
+    onConfirm: async () => {
+      if (info.conflict) return;
+      if (elements.pluginTrustCheck && !elements.pluginTrustCheck.checked) return;
+      closePluginModal();
+      setPluginBusy(true, '⏳ 正在安装插件...');
+      try {
+        const result = await window.settingsAPI.installPluginPackage(filePath, {
+          overwrite: !!info.installed
+        });
+        if (result && result.success) {
+          showPluginProgress('success', `✅ 已安装 ${result.plugin ? result.plugin.name : manifest.name || ''}`);
+          showToast('✅ 插件已安装');
+        } else {
+          showPluginProgress('error', `❌ 安装失败：${(result && result.error) || '未知错误'}`);
+        }
+      } catch (e) {
+        showPluginProgress('error', `❌ 安装失败：${e.message}`);
+      } finally {
+        setPluginBusy(false);
+        await refreshPluginUi().catch(() => {});
+      }
+    }
+  });
+}
+
+/** 打开统一模态框 */
+function openPluginModal({ title, body, trust = false, confirmLabel = '确定', confirmEnabled = true, onConfirm }) {
+  if (!elements.pluginModal) return;
+  elements.pluginModalTitle.textContent = title || '';
+  elements.pluginModalBody.innerHTML = '';
+  if (body) elements.pluginModalBody.appendChild(body);
+  elements.pluginTrustRow.classList.toggle('hidden', !trust);
+  if (elements.pluginTrustCheck) elements.pluginTrustCheck.checked = false;
+  elements.pluginModalConfirm.textContent = confirmLabel;
+  elements.pluginModalConfirm.disabled = !confirmEnabled || (trust && !(elements.pluginTrustCheck && elements.pluginTrustCheck.checked));
+  state.pluginModalAction = typeof onConfirm === 'function' ? onConfirm : null;
+  elements.pluginModal.classList.remove('hidden');
+  setTimeout(() => {
+    (trust ? elements.pluginTrustCheck : elements.pluginModalConfirm)?.focus();
+  }, 30);
+}
+
+/** 关闭模态框 */
+function closePluginModal() {
+  if (!elements.pluginModal) return;
+  elements.pluginModal.classList.add('hidden');
+  state.pluginModalAction = null;
+}
+
+/** 只有勾选「可信来源」后才允许安装 */
+function updatePluginModalConfirm() {
+  if (!elements.pluginModalConfirm) return;
+  const trust = elements.pluginTrustRow && !elements.pluginTrustRow.classList.contains('hidden');
+  elements.pluginModalConfirm.disabled = !!trust && !(elements.pluginTrustCheck && elements.pluginTrustCheck.checked);
+}
+
+/** 卸载确认 */
+function confirmUninstallPlugin(plugin) {
+  const body = document.createElement('div');
+  const text = document.createElement('p');
+  text.className = 'plugin-modal-text';
+  text.textContent = `确定卸载「${plugin.name || plugin.id}」吗？插件窗口会被关闭。`;
+  body.appendChild(text);
+
+  const label = document.createElement('label');
+  label.className = 'plugin-modal-check';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.dataset.pluginDeleteData = '1';
+  const span = document.createElement('span');
+  span.textContent = '同时删除插件数据（如对话历史，默认保留）';
+  label.append(checkbox, span);
+  body.appendChild(label);
+
+  openPluginModal({
+    title: '卸载插件',
+    body,
+    trust: false,
+    confirmLabel: '卸载',
+    onConfirm: async () => {
+      const deleteData = !!(elements.pluginModalBody.querySelector('[data-plugin-delete-data]') || {}).checked;
+      closePluginModal();
+      setPluginBusy(true, '⏳ 正在卸载插件...');
+      try {
+        const result = await window.settingsAPI.uninstallPlugin(plugin.id, { deleteData });
+        if (result && result.success) {
+          showPluginProgress('success', `✅ 已卸载 ${plugin.name || plugin.id}`);
+          showToast('✅ 插件已卸载');
+        } else {
+          showPluginProgress('error', `❌ 卸载失败：${(result && result.error) || '未知错误'}`);
+        }
+      } catch (e) {
+        showPluginProgress('error', `❌ 卸载失败：${e.message}`);
+      } finally {
+        setPluginBusy(false);
+        await refreshPluginUi().catch(() => {});
+      }
+    }
+  });
+}
+
+/** 启用 / 禁用 */
+async function togglePlugin(plugin) {
+  if (state.pluginBusy || plugin.locked) return;
+  const next = !plugin.enabled;
+  setPluginBusy(true, next ? '⏳ 正在启用插件...' : '⏳ 正在禁用插件...');
+  try {
+    const result = await window.settingsAPI.setPluginEnabled(plugin.id, next);
+    if (result && result.success) {
+      showPluginProgress('success', next ? `✅ 已启用 ${plugin.name || plugin.id}` : `✅ 已禁用 ${plugin.name || plugin.id}`);
+    } else {
+      showPluginProgress('error', `❌ 操作失败：${(result && result.error) || '未知错误'}`);
+    }
+  } catch (e) {
+    showPluginProgress('error', `❌ 操作失败：${e.message}`);
+  } finally {
+    setPluginBusy(false);
+    await refreshPluginUi().catch(() => {});
+  }
+}
+
+/** 跳到插件的设置面板 */
+function openPluginSettings(plugin) {
+  const tabName = `plugin-${plugin.id}`;
+  const panel = document.getElementById(`tab-${tabName}`);
+  if (panel) switchTab(tabName);
+  else showToast('该插件没有可用的设置面板');
+}
+
+/** 打开某个插件的目录 */
+async function openPluginFolder(plugin) {
+  try {
+    const result = await window.settingsAPI.openPluginDir(plugin.id);
+    if (!result || !result.success) showToast(`❌ ${(result && result.error) || '无法打开目录'}`);
+  } catch (e) {
+    showToast(`❌ 无法打开目录：${e.message}`);
+  }
+}
+
+/** 打开插件目录 */
+async function openPluginsDirectory() {
+  try {
+    const result = await window.settingsAPI.openPluginsDir();
+    if (!result || !result.success) showToast(`❌ ${(result && result.error) || '无法打开目录'}`);
+  } catch (e) {
+    showToast(`❌ 无法打开目录：${e.message}`);
+  }
+}
+
+/** 重新扫描 + 热重载 */
+async function reloadPluginsFromUi() {
+  if (state.pluginBusy) return;
+  setPluginBusy(true, '⏳ 正在重新扫描插件目录...');
+  try {
+    const result = await window.settingsAPI.reloadPlugins();
+    if (result && result.success) {
+      const scan = result.scan || {};
+      const parts = [];
+      if (scan.installed && scan.installed.length) parts.push(`安装 ${scan.installed.length} 个`);
+      if (scan.failed && scan.failed.length) parts.push(`失败 ${scan.failed.length} 个`);
+      showPluginProgress(
+        scan.failed && scan.failed.length ? 'error' : 'success',
+        `✅ 已重新扫描${parts.length ? `：${parts.join('，')}` : ''}`
+      );
+    } else {
+      showPluginProgress('error', `❌ 重新扫描失败：${(result && result.error) || '未知错误'}`);
+    }
+  } catch (e) {
+    showPluginProgress('error', `❌ 重新扫描失败：${e.message}`);
+  } finally {
+    setPluginBusy(false);
+    await refreshPluginUi().catch(() => {});
+  }
+}
+
+/** 安装/卸载期间禁用操作按钮 */
+function setPluginBusy(busy, text = '') {
+  state.pluginBusy = !!busy;
+  for (const el of [elements.btnInstallPlugin, elements.btnOpenPluginDir, elements.btnReloadPlugins]) {
+    if (el) el.disabled = !!busy;
+  }
+  if (elements.pluginDropzone) elements.pluginDropzone.classList.toggle('busy', !!busy);
+  if (busy && text) showPluginProgress('info', text);
+}
+
+/** 显示安装/卸载进度 */
+function showPluginProgress(kind, text) {
+  if (!elements.pluginInstallProgress) return;
+  elements.pluginInstallProgress.className = `test-result ${kind}`;
+  elements.pluginInstallProgress.textContent = text;
+}
+
+/** 清空进度 */
+function clearPluginProgress() {
+  if (!elements.pluginInstallProgress) return;
+  elements.pluginInstallProgress.className = 'test-result hidden';
+  elements.pluginInstallProgress.textContent = '';
+}
+
+/** 插件包大小格式化 */
+function formatPluginBytes(bytes) {
+  const num = Number(bytes) || 0;
+  if (num < 1024) return `${num}B`;
+  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)}KB`;
+  return `${(num / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 // 添加 toast 动画样式

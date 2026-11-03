@@ -194,4 +194,18 @@ function createDefaultIcon() {
 
 function getTray() { return tray; }
 
-module.exports = { createTray, getTray };
+/**
+ * 刷新托盘菜单（插件安装/卸载/启用后调用）。
+ * macOS 的右键菜单每次都是 popUpContextMenu(buildMenu())，无需刷新；
+ * Windows 需要重新 setContextMenu。
+ */
+function refreshTrayMenu() {
+  if (!tray || isMac) return;
+  try {
+    tray.setContextMenu(buildMenu());
+  } catch (e) {
+    // 托盘已销毁时忽略
+  }
+}
+
+module.exports = { createTray, getTray, refreshTrayMenu };

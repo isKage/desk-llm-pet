@@ -12,6 +12,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -128,7 +129,15 @@ function createFakeElectron() {
     _invoke: (channel, ...args) => {
       const fn = handlers.get(channel);
       if (!fn) throw new Error(`未注册的 invoke 通道: ${channel}`);
-      return fn({ sender: {} }, ...args);
+      const sender = {
+        getURL: () => 'file:///self-check/src/renderer/settings/settings.html'
+      };
+      return fn({ sender }, ...args);
+    },
+    _invokeWithUrl: (channel, url, ...args) => {
+      const fn = handlers.get(channel);
+      if (!fn) throw new Error(`未注册的 invoke 通道: ${channel}`);
+      return fn({ sender: { getURL: () => url } }, ...args);
     },
     _emit: (channel, event, ...args) => {
       const fn = listeners.get(channel);
@@ -140,11 +149,20 @@ function createFakeElectron() {
   };
 
   return {
-    app: { getPath: () => path.join(ROOT, '.tmp-selfcheck') },
+    app: {
+      getPath: () => path.join(ROOT, '.tmp-selfcheck'),
+      getVersion: () => '0.0.0-self-check'
+    },
     ipcMain,
     BrowserWindow: FakeBrowserWindow,
-    shell: { openExternal() {} },
-    dialog: { showMessageBox: async () => ({ response: 0 }) },
+    shell: {
+      openExternal() {},
+      openPath: async () => ''
+    },
+    dialog: {
+      showMessageBox: async () => ({ response: 0 }),
+      showOpenDialog: async () => ({ canceled: true, filePaths: [] })
+    },
     _windows: windows
   };
 }
@@ -191,10 +209,15 @@ console.log('\n[2/6] 插件宿主');
 const { createPluginManager, sanitizeFields, sanitizeMenuItems } = require('../src/plugins/plugin-manager');
 
 const electron = createFakeElectron();
+const CHECK_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'deskllmpet-self-check-'));
+const CHECK_USER_PLUGINS = path.join(CHECK_TMP, 'plugins');
+const CHECK_PLUGIN_DATA = path.join(CHECK_TMP, 'plugin-data');
 const host = createPluginManager({
   electron,
   logger: { log() {}, warn() {} },
   storeFactory: createMemoryStoreFactory(),
+  userPluginsDir: CHECK_USER_PLUGINS,
+  dataDir: CHECK_PLUGIN_DATA,
   hostServices: {
     getSharedLLMConfig: () => null,
     openSettings: () => true
@@ -337,12 +360,136 @@ await checkAsync('deactivateAll 注销通道并关闭插件窗口', async () => 
 });
 
 // ============================================================================
+// 2b. 插件管理（目录 / 安装 / 卸载 / 重载 / 安全）
+// ============================================================================
+
+const AdmZip = require('adm-zip');
+
+function writeSelfCheckPackage(name, manifest, mainSource) {
+  const packagePath = path.join(CHECK_TMP, `${name}.dlmpet`);
+  const zip = new AdmZip();
+  zip.addFile('plugin.json', Buffer.from(JSON.stringify(manifest)));
+  zip.addFile('main.js', Buffer.from(mainSource));
+  zip.writeZip(packagePath);
+  return packagePath;
+}
+
+await checkAsync('插件目录包含内置插件与来源信息', async () => {
+  await host.reloadAll();
+  const list = host.listPlugins();
+  const chat = list.find((item) => item.id === 'llm-chat');
+  assert(chat, '列表里缺少内置插件 llm-chat');
+  assertEqual(chat.origin, 'builtin', '内置插件来源');
+  assertEqual(chat.status, 'active', '内置插件状态');
+  assert(chat.hasSettings === true, '内置插件应有设置面板');
+});
+
+await checkAsync('旧版插件数据会迁移到 plugin-data', async () => {
+  const legacyDir = path.join(CHECK_USER_PLUGINS, 'legacy-demo');
+  fs.mkdirSync(legacyDir, { recursive: true });
+  fs.writeFileSync(path.join(legacyDir, 'settings.json'), '{"settings":{"x":1}}');
+  await host.reloadAll();
+  assert(!fs.existsSync(legacyDir), '旧数据目录应被移走');
+  const moved = path.join(CHECK_PLUGIN_DATA, 'legacy-demo', 'settings.json');
+  assert(fs.existsSync(moved), '旧数据未迁移到 plugin-data');
+});
+
+await checkAsync('安装插件包 → 加载 → 卸载 → 注销 IPC', async () => {
+  const fixturePath = writeSelfCheckPackage(
+    'self-check-fixture-1.0.0',
+    {
+      id: 'self-check-fixture',
+      name: '自检夹具',
+      version: '1.0.0',
+      description: 'self-check fixture',
+      author: 'self-check',
+      apiVersion: 1,
+      main: 'main.js'
+    },
+    "module.exports = { activate(ctx) { ctx.ipc.handle('ping', () => ({ ok: true })); } };"
+  );
+
+  const inspected = host.inspectPackage(fixturePath);
+  assert(inspected.ok === true, `预览失败: ${inspected.error}`);
+
+  const result = await host.installFromPackage(fixturePath);
+  assert(result.success === true, `安装失败: ${result.error}`);
+
+  const installed = host.listPlugins().find((item) => item.id === 'self-check-fixture');
+  assert(installed, '安装后列表里没有插件');
+  assertEqual(installed.origin, 'package', '安装来源');
+  assertEqual(installed.status, 'active', '安装后状态');
+  assert(electron.ipcMain._channels().includes('plugin:self-check-fixture:ping'), '插件 IPC 未注册');
+  assertEqual(electron.ipcMain._invoke('plugin:self-check-fixture:ping').ok, true, '插件 IPC 调用失败');
+
+  const uninstalled = await host.uninstallPlugin('self-check-fixture');
+  assert(uninstalled.success === true, `卸载失败: ${uninstalled.error}`);
+  assert(!host.listPlugins().some((item) => item.id === 'self-check-fixture'), '卸载后列表仍有插件');
+  assert(!electron.ipcMain._channels().includes('plugin:self-check-fixture:ping'), '卸载后插件 IPC 未注销');
+});
+
+await checkAsync('放入插件目录的 .dlmpet 会在重载时自动安装', async () => {
+  const packagePath = writeSelfCheckPackage(
+    'auto-scan-1.0.0',
+    {
+      id: 'auto-scan-check',
+      name: '自动扫描夹具',
+      version: '1.0.0',
+      description: 'auto scan fixture',
+      author: 'self-check',
+      apiVersion: 1,
+      main: 'main.js'
+    },
+    'module.exports = { activate() {} };'
+  );
+  const dropped = path.join(CHECK_USER_PLUGINS, 'auto-scan-check.dlmpet');
+  fs.copyFileSync(packagePath, dropped);
+
+  await host.reloadAll();
+  const entry = host.listPlugins().find((item) => item.id === 'auto-scan-check');
+  assert(entry, '放入插件目录的包没有被自动安装');
+  assertEqual(entry.status, 'active', '自动安装后状态');
+  assert(!fs.existsSync(dropped), '自动安装后包应移入 .packages/.failed');
+
+  const removed = await host.uninstallPlugin('auto-scan-check');
+  assert(removed.success === true, `清理自动安装夹具失败: ${removed.error}`);
+});
+
+await checkAsync('启用 / 禁用插件会重载菜单与状态', async () => {
+  const disabled = await host.setPluginEnabled('llm-chat', false);
+  assert(disabled.success === true, `禁用失败: ${disabled.error}`);
+  assertEqual(host.listPlugins().find((item) => item.id === 'llm-chat').status, 'disabled', '禁用状态');
+  assert(!host.getPetMenuItems().some((item) => item.pluginId === 'llm-chat'), '禁用后菜单应移除');
+
+  const enabled = await host.setPluginEnabled('llm-chat', true);
+  assert(enabled.success === true, `启用失败: ${enabled.error}`);
+  assertEqual(host.listPlugins().find((item) => item.id === 'llm-chat').status, 'active', '启用状态');
+  assert(host.getPetMenuItems().some((item) => item.pluginId === 'llm-chat'), '启用后菜单应恢复');
+});
+
+await check('插件管理 IPC 只允许设置窗口调用', () => {
+  const denied = { message: '' };
+  try {
+    electron.ipcMain._invokeWithUrl('plugins:inspect-package', 'file:///tmp/evil.html', '/tmp/x.dlmpet');
+  } catch (e) {
+    denied.message = e.message;
+  }
+  assert(/设置窗口/.test(denied.message), `非设置窗口未被拒绝: ${denied.message}`);
+
+  const list = electron.ipcMain._invokeWithUrl(
+    'plugins:list',
+    'file:///self-check/src/renderer/settings/settings.html'
+  );
+  assert(Array.isArray(list) && list.some((item) => item.id === 'llm-chat'), '设置窗口读取列表失败');
+});
+
+// ============================================================================
 // 3. 插件内部纯逻辑（对话客户端 / 会话仓库）
 // ============================================================================
 
 console.log('\n[3/6] 插件内部逻辑');
 
-const { resolveChatEndpoint, parseSseLine, createSseParser } = require('../src/plugins/llm-chat/chat-client');
+const { resolveChatEndpoint, parseSseLine, createSseParser, requestChat } = require('../src/plugins/llm-chat/chat-client');
 const { createConversationStore } = require('../src/plugins/llm-chat/conversations');
 
 check('resolveChatEndpoint 规范化各种写法', () => {
@@ -351,6 +498,33 @@ check('resolveChatEndpoint 规范化各种写法', () => {
   assertEqual(resolveChatEndpoint('https://api.deepseek.com/v1/'), 'https://api.deepseek.com/v1/chat/completions', '带 /v1');
   assertEqual(resolveChatEndpoint('https://api.openai.com/v1/chat/completions'), 'https://api.openai.com/v1/chat/completions', '完整端点');
   assertEqual(resolveChatEndpoint('localhost:11434/v1'), 'https://localhost:11434/v1/chat/completions', '自动补协议');
+});
+
+await checkAsync('对话请求会带 User-Agent（避免 API 边缘节点 ECONNRESET）', async () => {
+  const http = require('http');
+  let userAgent = '';
+  const server = http.createServer((req, res) => {
+    userAgent = req.headers['user-agent'] || '';
+    req.resume();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'ok' } }] }));
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+
+  try {
+    const result = await requestChat(
+      { apiKey: 'test-key', apiEndpoint: `http://127.0.0.1:${server.address().port}` },
+      [{ role: 'user', content: '你好' }],
+      { stream: false }
+    ).promise;
+    assertEqual(result, 'ok', '本地对话响应解析');
+    assert(/DeskLLMPet/.test(userAgent), `请求缺少 User-Agent（${userAgent || '空'}）`);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 check('SSE 解析：跨 chunk 拼接 + 忽略噪声行', () => {
@@ -480,25 +654,55 @@ check('桌宠：单击只播动画，双击才弹气泡（余额或自定义语�
   assert(/previewPhrase/.test(readFile('src/preload/settings-preload.js')), 'settings-preload 未暴露 previewPhrase');
 });
 
-check('发布信息一致：版本号 / 发布说明文件 / 安装包名对得上', () => {
+check('设置页包含插件管理入口与静态元素', () => {
+  const html = readFile('src/renderer/settings/settings.html');
+  for (const id of [
+    'tab-plugins', 'plugin-dropzone', 'plugin-user-dir',
+    'btn-install-plugin', 'btn-open-plugin-dir', 'btn-reload-plugins',
+    'plugin-install-progress', 'plugin-list', 'plugin-count',
+    'plugin-modal', 'plugin-modal-title', 'plugin-modal-body',
+    'plugin-trust-row', 'plugin-trust-check', 'plugin-modal-cancel', 'plugin-modal-confirm'
+  ]) {
+    assert(html.includes(`id="${id}"`), `设置页缺少 #${id}`);
+  }
+  assert(/data-tab="plugins"/.test(html), '设置页缺少插件标签');
+  const preload = readFile('src/preload/settings-preload.js');
+  for (const name of [
+    'getPlugins', 'getPluginPaths', 'pickPluginPackage', 'inspectPluginPackage',
+    'installPluginPackage', 'uninstallPlugin', 'setPluginEnabled', 'reloadPlugins',
+    'openPluginsDir', 'openPluginDir', 'onPluginsChanged'
+  ]) {
+    assert(preload.includes(`${name}:`), `settings-preload 缺少 ${name}`);
+  }
+});
+
+check('版本信息单一来源：package.json / package-lock / CHANGELOG', () => {
   const pkg = JSON.parse(readFile('package.json'));
   assert(/^\d+\.\d+\.\d+$/.test(pkg.version), `package.json 版本号格式异常: ${pkg.version}`);
 
-  const notesRel = `RELEASE_v${pkg.version}.md`;
-  assert(fs.existsSync(path.join(ROOT, notesRel)), `缺少发布说明文件 ${notesRel}`);
-  const notes = readFile(notesRel);
-  assert(notes.includes(`v${pkg.version}`), `${notesRel} 里没有出现 v${pkg.version}`);
-  for (const asset of [
-    `DeskLLMPet-${pkg.version}-arm64.dmg`,
-    `DeskLLMPet-${pkg.version}.dmg`,
-    `DeskLLMPet.Setup.${pkg.version}.exe`
-  ]) {
-    assert(notes.includes(asset), `${notesRel} 未提到安装包 ${asset}`);
-  }
+  const lock = JSON.parse(readFile('package-lock.json'));
+  assertEqual(lock.version, pkg.version, 'package-lock.json 根版本号');
+  assertEqual(lock.packages && lock.packages[''] && lock.packages[''].version, pkg.version,
+    'package-lock.json packages[""] 版本号');
 
-  // 设置页「关于」的静态兜底版本号也要跟上（拿不到主进程版本时显示的就是它）
+  const changelog = readFile('CHANGELOG.md');
+  const { extractSection } = require('./release-notes');
+  const section = extractSection(changelog, pkg.version);
+  assert(section && section.includes(pkg.version), `CHANGELOG.md 缺少当前版本 ${pkg.version} 的段落`);
+
+  // README / 设置页不再写死当前版本号
+  const readme = readFile('README.md');
+  assert(!readme.includes(`v${pkg.version}`), `README.md 不应写死当前版本 v${pkg.version}`);
   const about = readFile('src/renderer/settings/settings.html');
-  assert(about.includes(`v${pkg.version}`), `设置页关于版本号未同步到 v${pkg.version}`);
+  assert(!about.includes(`v${pkg.version}`), `设置页不应写死当前版本 v${pkg.version}`);
+  assert(/getAppPath/.test(readFile('src/renderer/settings/settings.js')), '设置页版本号应动态注入');
+
+  // GitHub Release 正文由 CHANGELOG 提取，不能再依赖逐版本 RELEASE 文件
+  const workflow = readFile('.github/workflows/release.yml');
+  assert(/release-notes\.js/.test(workflow), 'release workflow 未使用 scripts/release-notes.js');
+  assert(!/RELEASE_v/.test(workflow), 'release workflow 仍引用旧 RELEASE_v*.md');
+  const legacy = fs.readdirSync(ROOT).filter((name) => /^RELEASE_v.*\.md$/.test(name));
+  assertEqual(legacy.length, 0, `仍存在旧发布说明文件: ${legacy.join(', ')}`);
 });
 
 // ============================================================================
@@ -672,6 +876,10 @@ check('用户可见文案中不出现「回收站」', () => {
   const offenders = files.filter((file) => fs.readFileSync(file, 'utf8').includes('回收站'));
   assertEqual(offenders.length, 0, `仍有文案提到回收站: ${offenders.map((f) => path.relative(ROOT, f)).join(', ')}`);
 });
+
+try {
+  fs.rmSync(CHECK_TMP, { recursive: true, force: true });
+} catch (e) { /* 临时目录清理失败不影响结果 */ }
 
 }
 

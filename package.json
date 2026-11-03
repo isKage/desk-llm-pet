@@ -17,14 +17,21 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "dev:tools": "electron . --dev --devtools",
-    "check": "node scripts/check-menu-anchor.js && node scripts/self-check.js",
+    "check": "node scripts/check-menu-anchor.js && node scripts/check-plugin-installer.js && node scripts/check-docs.js && node scripts/self-check.js",
     "check:renderer": "electron scripts/smoke-renderer.js",
+    "check:docs": "node scripts/check-docs.js",
+    "check:installer": "node scripts/check-plugin-installer.js",
+    "pack:plugin": "node scripts/pack-plugin.js",
+    "release:prepare": "node scripts/release-prepare.js",
+    "release:notes": "node scripts/release-notes.js",
+    "clean": "node scripts/clean.js",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:all": "electron-builder --win --mac",
     "postinstall": "node scripts/setup-assets.js"
   },
   "dependencies": {
+    "adm-zip": "^0.5.18",
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
@@ -43,12 +50,6 @@
       "assets/**/*",
       "package.json",
       "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "assets",
-        "to": "assets"
-      }
     ],
     "mac": {
       "category": "public.app-category.entertainment",

@@ -29,6 +29,7 @@
       <button class="tab-btn active" data-tab="api">🔑 API 配置</button>
       <button class="tab-btn" data-tab="animations">🎬 动画素材</button>
       <button class="tab-btn" data-tab="pet">🐾 宠物设置</button>
+      <button class="tab-btn" data-tab="plugins">🧩 插件</button>
       <button class="tab-btn" data-tab="about">ℹ️ 关于</button>
     </nav>
 
@@ -38,7 +39,7 @@
       <section id="tab-api" class="tab-panel active">
         <div class="setting-group">
           <h3>DeepSeek API 配置</h3>
-          <p class="setting-desc">用于查询账户余额（DeepSeek 开放平台官方余额接口）</p>
+          <p class="setting-desc">填写 DeepSeek API Key，用于查询余额。</p>
 
           <div class="form-group">
             <label for="api-key">API Key</label>
@@ -46,23 +47,23 @@
               <input type="password" id="api-key" placeholder="sk-xxxxxxxxxxxxxxxx">
               <button class="toggle-btn" id="toggle-api-key" title="显示/隐藏">👁️</button>
             </div>
-            <span class="form-hint">密钥仅保存在本地，不会上传到任何服务器</span>
+            <span class="form-hint">仅保存在本地。</span>
           </div>
 
           <div class="form-group">
             <label for="api-endpoint">API 地址</label>
             <input type="url" id="api-endpoint" placeholder="https://api.deepseek.com">
-            <span class="form-hint">余额接口按「域名 + /user/balance」自动推导</span>
+            <span class="form-hint">一般保持默认即可。</span>
           </div>
 
           <div class="form-group">
             <label for="balance-endpoint">余额查询地址（可选）</label>
-            <input type="url" id="balance-endpoint" placeholder="留空自动使用 https://api.deepseek.com/user/balance">
-            <span class="form-hint">使用代理或自建服务时填写，留空则按上方 API 地址推导</span>
+            <input type="url" id="balance-endpoint" placeholder="留空自动推导">
+            <span class="form-hint">使用代理时填写；留空自动推导。</span>
           </div>
 
           <div class="form-actions">
-            <button class="btn btn-primary" id="btn-test-api">🔗 测试连接（查询余额）</button>
+            <button class="btn btn-primary" id="btn-test-api">🔗 测试连接</button>
             <button class="btn btn-secondary" id="btn-save-api">💾 保存配置</button>
           </div>
 
@@ -74,7 +75,7 @@
       <section id="tab-animations" class="tab-panel">
         <div class="setting-group">
           <h3>闲置动画池</h3>
-          <p class="setting-desc">桌宠空闲时随机播放的动画（勾选启用，默认全部启用）</p>
+          <p class="setting-desc">勾选启用的动画，空闲时随机播放。</p>
           <div id="idle-anim-list" class="anim-list">
             <div class="anim-empty">加载中...</div>
           </div>
@@ -85,7 +86,7 @@
 
         <div class="setting-group">
           <h3>点击反应动画池</h3>
-          <p class="setting-desc">点击桌宠时随机播放的反应动画（勾选启用，默认全部启用）</p>
+          <p class="setting-desc">勾选启用的动画，点击桌宠时随机播放。</p>
           <div id="click-anim-list" class="anim-list">
             <div class="anim-empty">加载中...</div>
           </div>
@@ -116,23 +117,20 @@
               <input type="range" id="pet-scale" min="0.5" max="2" step="0.1" value="1">
               <span class="range-value" id="scale-value">1.0x</span>
             </div>
-            <span class="form-hint">只改变宠物本身大小，不改变窗口对宠物的包围程度</span>
+            <span class="form-hint">只改变宠物大小。</span>
           </div>
         </div>
 
         <div class="setting-group">
           <h3>窗口裁剪</h3>
-          <p class="setting-desc">
-            动画本身大小不变，窗口只保留中间一块，把周围不重要的背景裁掉。
-            裁剪越小窗口越小（拖动滑块即时预览，宠物大小不会变）。
-          </p>
+          <p class="setting-desc">缩小窗口范围，只保留宠物主体。</p>
           <div class="form-group">
             <label for="pet-crop">窗口裁剪比例</label>
             <div class="range-wrapper">
               <input type="range" id="pet-crop" min="0.25" max="1" step="0.01" value="0.55">
               <span class="range-value" id="crop-value">55%</span>
             </div>
-            <span class="form-hint">窗口边长 = 300 × 宠物大小 × 裁剪比例，推荐 0.45 ~ 0.7</span>
+            <span class="form-hint">越小窗口越紧凑。</span>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -157,9 +155,7 @@
 
         <div class="setting-group">
           <h3>气泡显示</h3>
-          <p class="setting-desc">
-            气泡是独立的小窗口，可以单独调大小和位置；它会浮在宠物上方，不会遮挡宠物，也不会挡住鼠标操作。
-          </p>
+          <p class="setting-desc">调整气泡的大小和位置。</p>
           <div class="form-group">
             <label for="bubble-scale">气泡大小</label>
             <div class="range-wrapper">
@@ -183,7 +179,7 @@
               </div>
             </div>
           </div>
-          <span class="form-hint">垂直偏移为负值更靠上，正值会压到宠物身上</span>
+          <span class="form-hint">负值向上，正值向下。</span>
           <div class="form-actions">
             <button class="btn btn-primary" id="btn-preview-bubble">👀 预览气泡</button>
             <button class="btn btn-secondary" id="btn-reset-bubble">↩️ 重置气泡</button>
@@ -192,7 +188,7 @@
 
         <div class="setting-group">
           <h3>余额气泡</h3>
-          <p class="setting-desc">双击桌宠时用气泡展示 DeepSeek API 余额（单击只播放点击反应动画）</p>
+          <p class="setting-desc">双击桌宠时展示余额。</p>
           <div class="form-group">
             <label class="switch-label">
               <span>启用余额气泡</span>
@@ -201,16 +197,16 @@
                 <span class="switch-slider"></span>
               </label>
             </label>
-            <span class="form-hint">关闭后双击桌宠不再展示余额，改为随机展示下面的自定义语句</span>
+            <span class="form-hint">关闭后双击会显示下面的自定义语句。</span>
           </div>
           <div class="form-group">
-            <label for="balance-interval">自动展示间隔 t（分钟）</label>
+            <label for="balance-interval">自动展示间隔（分钟）</label>
             <input type="number" id="balance-interval" min="0" max="1440" step="1" value="30">
-            <span class="form-hint">每隔 t 分钟自动展示一次余额；填 0 表示只在双击桌宠时展示</span>
+            <span class="form-hint">填 0 表示只在双击时展示。</span>
           </div>
           <div class="form-group">
-            <label for="balance-phrases">双击自定义语句（每行一句）</label>
-            <textarea id="balance-phrases" rows="5" placeholder="例如：&#10;今天也要加油鸭！&#10;记得起来喝口水~"></textarea>
+            <label for="balance-phrases">双击自定义语句</label>
+            <textarea id="balance-phrases" rows="5" placeholder="每行一句，例如：&#10;今天也要加油鸭！&#10;记得起来喝口水~"></textarea>
             <span class="form-hint" id="balance-phrases-hint"></span>
           </div>
           <div class="form-actions">
@@ -228,7 +224,7 @@
                 <span class="switch-slider"></span>
               </label>
             </label>
-            <span class="form-hint">系统启动时自动运行 DeskLLMPet</span>
+            <span class="form-hint">登录系统时自动运行。</span>
           </div>
         </div>
 
@@ -237,12 +233,47 @@
         </div>
       </section>
 
+
+      <!-- ====== 插件管理 ====== -->
+      <section id="tab-plugins" class="tab-panel">
+        <div class="setting-group">
+          <h3>安装插件</h3>
+          <p class="setting-desc">选择或拖入 <code>.dlmpet</code> 插件包；也可以放进插件目录后重新扫描。</p>
+          <div id="plugin-dropzone" class="plugin-dropzone" tabindex="0" role="button"
+               aria-label="选择或拖入插件包">
+            <div class="plugin-dropzone-icon">📦</div>
+            <div class="plugin-dropzone-title">把 .dlmpet 插件包拖到这里</div>
+            <div class="plugin-dropzone-hint">或点击选择文件，安装前会先预览。</div>
+            <div id="plugin-user-dir" class="plugin-user-dir">插件目录：读取中…</div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btn-install-plugin">📥 选择插件包…</button>
+            <button class="btn btn-secondary" id="btn-open-plugin-dir">📂 打开插件目录</button>
+            <button class="btn btn-secondary" id="btn-reload-plugins">🔄 重新扫描</button>
+          </div>
+          <div id="plugin-install-progress" class="test-result hidden"></div>
+        </div>
+
+        <div class="setting-group">
+          <h3>插件列表 <span id="plugin-count" class="plugin-count">0</span></h3>
+          <p class="setting-desc">内置插件只能禁用；用户插件可更新或卸载。</p>
+          <div id="plugin-list" class="plugin-list">
+            <div class="plugin-empty">加载中...</div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>安全提示</h3>
+          <p class="setting-desc">插件拥有本机权限，请只安装可信来源的插件包。</p>
+        </div>
+      </section>
+
       <!-- ====== 关于 ====== -->
       <section id="tab-about" class="tab-panel">
         <div class="about-content">
           <div class="about-icon">🐾</div>
           <h2>DeskLLMPet</h2>
-          <p class="version">v1.1.1</p>
+          <p class="version">读取中...</p>
           <p class="about-desc">
             一款支持 API 余额气泡、可插件化扩展的交互式桌面宠物应用。
             <br>基于 Electron 构建，支持 Windows 和 macOS。
@@ -263,6 +294,24 @@
           </div>
         </div>
       </section>
+    </div>
+  </div>
+
+
+  <!-- 插件安装预览 / 卸载确认 -->
+  <div id="plugin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="plugin-modal-title">
+    <div class="modal-backdrop" data-modal-close="1"></div>
+    <div class="modal-card">
+      <h2 id="plugin-modal-title">安装插件</h2>
+      <div id="plugin-modal-body" class="modal-body"></div>
+      <label id="plugin-trust-row" class="modal-trust hidden">
+        <input type="checkbox" id="plugin-trust-check">
+        <span>我确认该插件包来自可信来源</span>
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="plugin-modal-cancel">取消</button>
+        <button class="btn btn-primary" id="plugin-modal-confirm" disabled>安装</button>
+      </div>
     </div>
   </div>
 

@@ -346,10 +346,13 @@ function finishStreaming(data) {
 
 function handleStreamError(error) {
   document.getElementById('streaming-message')?.remove();
+  const text = String(error || '未知错误');
+  const isNetworkError = /网络请求失败|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|请求超时|流式响应中断/i.test(text);
+  const hint = isNetworkError ? '请检查网络连接，或稍后重试' : '请检查「设置 → AI 对话」中的配置';
   const div = document.createElement('div');
   div.className = 'message assistant error';
   div.innerHTML = '<div class="message-avatar">⚠️</div><div class="message-content">' +
-    `${escapeHtml(String(error || '未知错误'))}<br><small>请检查「设置 → AI 对话」中的配置</small></div>`;
+    `${escapeHtml(text)}<br><small>${hint}</small></div>`;
   elements.messagesContainer.appendChild(div);
   state.streamingText = '';
   state.requestId = null;

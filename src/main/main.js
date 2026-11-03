@@ -13,7 +13,7 @@ const {
 const { createSettingsWindow, getSettingsWindow } = require('./settings-window');
 const { createBubbleWindow, positionBubble, hideBubble } = require('./bubble-window');
 const { createMenuWindow, hideMenuWindow } = require('./menu-window');
-const { createTray } = require('./tray');
+const { createTray, refreshTrayMenu } = require('./tray');
 const { registerIpcHandlers } = require('./ipc-handlers');
 const { getLLMConfig } = require('../shared/store');
 
@@ -141,6 +141,10 @@ async function loadPlugins() {
         getSharedLLMConfig: () => getLLMConfig(),
         // 打开本体的设置窗口
         openSettings: () => { createSettingsWindow(); return true; }
+      },
+      // 安装/卸载/启用插件后刷新 Windows 托盘菜单（macOS 每次右键都会重建）
+      onPluginsChanged: () => {
+        try { refreshTrayMenu(); } catch (e) { /* 托盘不可用时忽略 */ }
       }
     });
     const reports = await host.loadAll();

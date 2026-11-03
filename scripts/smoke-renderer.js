@@ -6,10 +6,11 @@
  *   1. 桌宠页面：右键改为请求独立菜单窗口（页面内不再有会被裁掉的菜单），
  *      双击判定与自定义语句状态都已就绪
  *   2. 右键菜单页面：本体菜单项 + 插件菜单项都渲染，并按内容回报自适应尺寸
- *   3. 设置页面能动态渲染出插件的设置面板，自定义语句表单项可用
+ *   3. 设置页面能动态渲染插件设置面板，插件管理页可安装/卸载 .dlmpet
  *   4. AI 对话插件窗口能打开，preload 桥可用，且「未配置 API Key」能在
  *      「渲染进程 → 主进程 → 渲染进程」整条链路上正确回报
- *   5. 全程没有渲染进程报错（console.error / preload 异常 / 加载失败）
+ *   5. 插件安装后热重载、设置面板出现；卸载后列表与面板同步移除
+ *   6. 全程没有渲染进程报错（console.error / preload 异常 / 加载失败）
  *
  * 用法：npm run check:renderer
  * 若所在环境的 Chromium 沙箱不可用，可追加 --no-sandbox
@@ -17,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const AdmZip = require('adm-zip');
 const { app, BrowserWindow, ipcMain, shell, dialog, screen } = require('electron');
 
 // 把 userData 放到工作区内，避免污染真实配置；每次运行前清空，保证结果可复现
@@ -26,6 +28,33 @@ app.setPath('userData', SMOKE_USER_DATA);
 
 const ROOT = path.join(__dirname, '..');
 const results = [];
+
+/** 生成一个最小夹具插件包（无窗口、无 IPC，仅用于安装/卸载链路测试） */
+function createSmokePluginPackage() {
+  const fixturesDir = path.join(SMOKE_USER_DATA, 'fixtures');
+  fs.mkdirSync(fixturesDir, { recursive: true });
+  const packagePath = path.join(fixturesDir, 'smoke-fixture-1.0.0.dlmpet');
+  const zip = new AdmZip();
+  zip.addFile('plugin.json', Buffer.from(JSON.stringify({
+    id: 'smoke-fixture',
+    name: '冒烟夹具插件',
+    version: '1.0.0',
+    description: '仅用于冒烟测试',
+    author: 'smoke',
+    apiVersion: 1,
+    main: 'main.js',
+    contributes: {
+      settings: {
+        title: '冒烟夹具',
+        icon: '🧪',
+        fields: [{ key: 'value', label: '值', type: 'text', default: 'x' }]
+      }
+    }
+  })));
+  zip.addFile('main.js', Buffer.from('module.exports = { activate() {} };'));
+  zip.writeZip(packagePath);
+  return packagePath;
+}
 
 function record(name, ok, detail = '') {
   results.push({ name, ok });
@@ -93,6 +122,8 @@ async function main() {
   const host = createPluginManager({
     electron: { app, ipcMain, BrowserWindow, shell, dialog },
     logger: console,
+    userPluginsDir: path.join(SMOKE_USER_DATA, 'plugins'),
+    dataDir: path.join(SMOKE_USER_DATA, 'plugin-data'),
     hostServices: {
       getSharedLLMConfig: () => null,   // 保证「未配置」分支可复现
       openSettings: () => true
@@ -182,6 +213,26 @@ async function main() {
     settingsPanel.tab && settingsPanel.panel && settingsPanel.fields >= 7 &&
     settingsPanel.saveBtn && settingsPanel.actions >= 1 && settingsPanel.modelValue === 'deepseek-chat',
     JSON.stringify(settingsPanel));
+
+  const pluginUi = await settings.win.webContents.executeJavaScript(
+    `(async () => {
+       const list = await window.settingsAPI.getPlugins();
+       const paths = await window.settingsAPI.getPluginPaths();
+       return {
+         tab: !!document.querySelector('#tab-nav .tab-btn[data-tab="plugins"]'),
+         dropzone: !!document.getElementById('plugin-dropzone'),
+         listEl: !!document.getElementById('plugin-list'),
+         api: typeof window.settingsAPI.installPluginPackage,
+         listHasChat: Array.isArray(list) && list.some((p) => p.id === 'llm-chat' && p.origin === 'builtin'),
+         userDir: paths && paths.userPluginsDir
+       };
+     })()`
+  ).catch((e) => ({ error: e.message }));
+
+  record('设置页面：插件管理页与内置插件列表可用',
+    pluginUi.tab === true && pluginUi.dropzone === true && pluginUi.listEl === true &&
+    pluginUi.api === 'function' && pluginUi.listHasChat === true && !!pluginUi.userDir,
+    JSON.stringify(pluginUi));
 
   const phraseUi = await settings.win.webContents.executeJavaScript(
     `(() => {
@@ -285,6 +336,50 @@ async function main() {
   record('对话页面：发送后会话已持久化',
     Array.isArray(persisted) && persisted.length === 1 && persisted[0].messageCount === 1,
     JSON.stringify(persisted));
+
+  // ---------- 4b. 插件安装 / 卸载（真实 UI 链路） ----------
+  const fixturePath = createSmokePluginPackage();
+  const installResult = await settings.win.webContents.executeJavaScript(
+    `window.settingsAPI.installPluginPackage(${JSON.stringify(fixturePath)}, { overwrite: true })`
+  ).catch((e) => ({ success: false, error: e.message }));
+
+  const readFixtureState = () => settings.win.webContents.executeJavaScript(
+    `(async () => {
+       const list = await window.settingsAPI.getPlugins();
+       return {
+         installed: list.some((p) => p.id === 'smoke-fixture' && p.status === 'active'),
+         tab: !!document.querySelector('#tab-nav .tab-btn[data-tab="plugin-smoke-fixture"]'),
+         listText: (document.getElementById('plugin-list') || {}).textContent || ''
+       };
+     })()`
+  ).catch((e) => ({ error: e.message }));
+
+  let fixtureState = await readFixtureState();
+  for (let i = 0; i < 30 && !(fixtureState.installed && fixtureState.tab); i += 1) {
+    await new Promise((r) => setTimeout(r, 100));
+    fixtureState = await readFixtureState();
+  }
+
+  record('插件安装：设置页安装 .dlmpet 后热重载并出现设置面板',
+    !!(installResult && installResult.success) && fixtureState.installed === true &&
+    fixtureState.tab === true && /冒烟夹具插件/.test(fixtureState.listText || ''),
+    JSON.stringify({ install: installResult, state: fixtureState }));
+
+  const uninstallResult = await settings.win.webContents.executeJavaScript(
+    `window.settingsAPI.uninstallPlugin('smoke-fixture', { deleteData: true })`
+  ).catch((e) => ({ success: false, error: e.message }));
+
+  let afterUninstall = await readFixtureState();
+  for (let i = 0; i < 30 && (afterUninstall.installed || afterUninstall.tab); i += 1) {
+    await new Promise((r) => setTimeout(r, 100));
+    afterUninstall = await readFixtureState();
+  }
+
+  record('插件卸载：列表与设置面板同步移除',
+    !!(uninstallResult && uninstallResult.success) && afterUninstall.installed === false &&
+    afterUninstall.tab === false &&
+    !/冒烟夹具插件/.test(afterUninstall.listText || ''),
+    JSON.stringify({ uninstall: uninstallResult, state: afterUninstall }));
 
   // ---------- 5. 右键菜单窗口（真实窗口，全程不显示到桌面） ----------
   const {
